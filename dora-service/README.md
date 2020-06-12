@@ -6,7 +6,7 @@ This is a KubOS service that provides angle of arrival information derived from 
 
 Dependencies are given in requirements.txt.  All but smbus2 are part of the standard KubOS linux build.
 
-## To install the service on a BBB running KubOS:
+## Installation onto a BBB running KubOS:
 
 1. Download and install the python-smbus2 package on the BBB.  KubOS does not include PIP so install this package by unpacking it and then from inside its top directory calling: _python setup.py install_
 2. Copy this directory (dora-service) to /home/system/usr/bin on the BBB
@@ -14,7 +14,7 @@ Dependencies are given in requirements.txt.  All but smbus2 are part of the stan
 4. Copy or add the contents of the config.toml file to /home/system/etc/config.toml
 5. The service should launch in the background on the next reboot of the BBB.
 
-## Using the service
+## Usage
 
 You can interact with the service using the standard KubOS TCP/IP interface.  The service will listen on the port specified in its config.toml section.  Supported queries and mutations are implemented in the service/schema.py file.  They include:
 
@@ -50,4 +50,6 @@ You can interact with the service using the standard KubOS TCP/IP interface.  Th
    - Set _flag_ (integer enum) to 0, 1, 2, 3 to configure the ambient light sensors to integrate for 80ms, 160ms, 320ms, and 640ms respectively.
    - Returns _status_ and _telemetry_ with the same caveats as the _noop_ response.
 
+## Logging
 
+The service logs many of its actions through the KubOS logging functions, which are similar to syslog.  The KubOS log files are in /home/system/log and you can expect to find dora-service messages in the file kubos-info.log.
