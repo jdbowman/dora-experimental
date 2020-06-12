@@ -16,7 +16,7 @@ Dependencies are given in requirements.txt.  All but smbus2 are part of the stan
 
 ## Using the service
 
-You can interact with the service using the standard KubOS TCP/IP interface.  The service will listen on the port specified in its config.toml section.  Supported queries and mutations are implemented in the services/schema.py file.  They include:
+You can interact with the service using the standard KubOS TCP/IP interface.  The service will listen on the port specified in its config.toml section.  Supported queries and mutations are implemented in the service/schema.py file.  They include:
 
 ### Queries
 
@@ -36,7 +36,7 @@ You can interact with the service using the standard KubOS TCP/IP interface.  Th
 ### Mutations
 
 1. noop()
-   - Returns: _status_ (Boolean) and _telemetry_.  See _powerOn_ below for details about the return values.
+   - Returns: _status_ (Boolean) and a copy of the last _telemetry_ query (see Queries section above for details).  Note that a new telemetry query is not actually executed, so the sensor and angle of arrival values will not be up to date in the returned telemetry structure.
 2. commandRaw(sensor, command, flag, lsb, msb)
    - _sensor_ (integer enum): 1 or 2, specifies the sensor to send the command to
    - _command_ (integer): one-byte command value (register address on the VCNL4040 board).  See service/hw_vcnl4040.py for list of command values.
@@ -45,9 +45,9 @@ You can interact with the service using the standard KubOS TCP/IP interface.  Th
    - This command returns:  _status_ (Boolean) and  _data_ (integer).  The response _data_ is only non-zero for read commands and contains the value of the lst and msb in the register.
 3. powerOn(power) 
    - Set _power_ (Boolean) to True or False to activate the ambient light sensors.  
-   - Returns _status_ (Boolean) and a copy of the last _telemetry_ query (see Queries section above for details).  Note that a new telemetry query is not actually executed, so the sensor and angle of arrival values will not be up to date in the returned telemetry structure.
+   - Returns _status_ and _telemetry_ with the same caveats as the _noop_ response.
 4. integrationTime(flag)
    - Set _flag_ (integer enum) to 0, 1, 2, 3 to configure the ambient light sensors to integrate for 80ms, 160ms, 320ms, and 640ms respectively.
-   - Returns _status_ and _telemetry_ with the same caveats as the _powerOn_ mutation.
+   - Returns _status_ and _telemetry_ with the same caveats as the _noop_ response.
 
 
