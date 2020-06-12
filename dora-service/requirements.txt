@@ -1,0 +1,6 @@
+Flask==0.12.2
+Flask_GraphQL==1.4.1
+graphene==2.1.1           # via django-graphql-jwt, graphene-django
+graphql-core==2.0         # via graphene, graphql-relay
+graphql-relay==0.4.5
+-f /home/vagrant/kubos/libs/kubos-service kubos_service==1.0
