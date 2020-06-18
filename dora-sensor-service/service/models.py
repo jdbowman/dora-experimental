@@ -23,7 +23,7 @@ class DoraSubsystem(object):
     API class encapsulating DORA subsystem functionality.
     """
 
-    app_name = "dora-service"
+    app_name = "dora-sensor-service"
 
 
     def __init__(self):

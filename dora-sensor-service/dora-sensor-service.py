@@ -13,7 +13,7 @@ from kubos_service.config import Config
 from kubos_service import http_service
 
 # Get the configuration (uses command line argument -c if present)
-config = Config("dora-service")
+config = Config("dora-sensor-service")
 
 # Start an http service
 http_service.start(config, schema.schema)

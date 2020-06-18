@@ -1,0 +1,7 @@
+[dora-senors-service.addr]
+ip = "0.0.0.0"
+port = 8123
+
+[dora-sensor-service.device]
+bus1 = 1
+bus2 = 2
