@@ -1,0 +1,21 @@
+[package]
+name = "dora-health-app"
+version = "0.1.0"
+authors = ["vagrant"]
+edition = "2018"
+
+[dependencies]
+failure = "0.1.2"
+getopts = "0.2"
+kubos-app = { path = "/home/vagrant/kubos/apis/app-api/rust" }
+log = "^0.4.0"
+#num-traits = "^0.2.0"
+
+
+[profile.release]
+lto = true
+opt-level = "z"
+panic = "abort"
+codegen-units = 1
+
+

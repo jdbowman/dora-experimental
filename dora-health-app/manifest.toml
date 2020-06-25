@@ -1,0 +1,5 @@
+name = "dora-health-app"
+executable = "dora-health-app"
+version = "0.1"
+author = "Judd D. Bowman"
+config = "/etc/kubos-config.toml"
