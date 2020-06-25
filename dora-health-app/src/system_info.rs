@@ -191,6 +191,10 @@ impl fmt::Display for Diskinfo {
 }
 
 
+
+
+
+
 pub fn disk_usage_all() -> io::Result< Vec<Diskinfo> > {
 
 
@@ -262,3 +266,19 @@ pub fn disk_usage_by_filesystem(ptr: &str) -> io::Result<Diskinfo> {
 			.and_then(|d| Ok(d.clone())))
 }		
 
+
+
+
+pub fn find_mount(disks: &Vec<Diskinfo>, ptr: &str) -> io::Result<Diskinfo> {
+	disks.iter().find(|&d| d.mounted_on == ptr)
+		.ok_or( io::Error::new(io::ErrorKind::InvalidData, "Could not find mount entry") )
+		.and_then(|d| Ok(d.clone()))
+}	
+
+
+// Returns the disk info associated with the first instance of the filesystem in the disk list
+pub fn find_filesystem(disks: &Vec<Diskinfo>, ptr: &str) -> io::Result<Diskinfo> {
+	disks.iter().find(|&d| d.filesystem == ptr)
+		.ok_or( io::Error::new(io::ErrorKind::InvalidData, "Could not find filesystem entry") )
+		.and_then(|d| Ok(d.clone()))
+}	

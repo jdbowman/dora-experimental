@@ -1,5 +1,5 @@
 
-use failure::{bail, Error};
+use failure::Error;
 use getopts::Options;
 use kubos_app::*;
 use log::*;
@@ -8,45 +8,89 @@ use std::io;
 mod system_info;
 
 
-fn print_usage(program: &str, opts: Options) {
-    let brief = format!("Usage: {} [options]", program);
-    print!("{}", opts.usage(&brief));
+fn save_parameter(serv: &ServiceConfig, param: &str, val: &String) -> Result<(), Error> {
+    let request = format!(
+        r#"
+            mutation {{
+                insert(subsystem: "OBC", parameter: "{}", value: "{}") {{
+                    success,
+                    errors
+                }}
+            }}
+        "#, 
+        param, val );
+
+    match query(serv, &request, Some(Duration::from_secs(1))) {
+        Ok(msg) => {
+            println!("{}", msg);
+            let success = msg
+                .get("insert")
+                .and_then(|data| data.get("success").and_then(|val| val.as_bool()));
+
+            if success == Some(true) {
+                debug!("Parameter [{}] saved to database", param);
+                return Ok(())
+            } else {
+                match msg.get("errors") {
+                    Some(errors) => {
+                        error!("Failed to save value to database: {}", errors);
+                        return Err(io::Error::new(io::ErrorKind::InvalidInput, 
+                            format!("Failed to save value to database: {}", errors)))?;
+                    },
+
+                    None => return Err(io::Error::new(io::ErrorKind::InvalidInput, 
+                            "Failed to save value to database errors"))?
+                };
+            }
+        },
+
+        Err(err) => {
+            error!("Telemetry service mutation failed: {}", err);
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, 
+                            format!("Telemetry service mutation failed: {}", err)))?
+        }
+    }
 }
+
+
 
 
 fn main() -> Result<(), Error> {
 
-	// Setup logging
+	// Set up logging
     logging_setup!("dora-health-app", log::LevelFilter::Info)?;
 
     // Set up the recognized command line arguments
     let args: Vec<String> = ::std::env::args().collect();
-    let program = args[0].clone();
     let mut opts = Options::new();
 
-    // First, the KubOS required arguments
-    opts.optflagopt(
-        "c",
-        "config",
-        "System config file which should be used",
-        "CONFIG",
-    );
-
-    // Now our custom app arguments:
+    opts.optflagopt("c", "config", 
+        "Configuration file for connecting to KubOS services.  Default is /etc/kubos-config.toml",
+        "CONFIG");
     opts.optflag("h", "help", "Print this help menu");
-    opts.optflagopt("s", "cmd_string", "Subcommand", "CMD_STR");
-    opts.optflagopt("t", "cmd_sleep", "Safe-mode sleep time", "CMD_INT");
+    opts.optflagopt("s", "save", 
+        "Save the health information to the KubOS telemetry service database",
+        "SAVE");
+    opts.optflagopt("t", "transmit", 
+        "Transmit health through KubOS communications system",
+        "TRANSMIT");
 
-    // Parse the command args
-    let matches = match opts.parse(args) {
+    let matches = match opts.parse(&args) {
         Ok(r) => r,
-        Err(f) => return Err(io::Error::new(io::ErrorKind::InvalidInput, "Could not parse command line"))?
+        Err(_) => {
+            error!("Abort.  Could not parse command line");
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Could not parse command line"))?
+        }
     };
 
     if matches.opt_present("h") {
-        print_usage(&program, opts);
+        let brief = format!("Usage: {} [options]", &args[0]);
+        print!("{}", opts.usage(&brief));
         return Ok(())
     }
+
+    let save = if matches.opt_present("s") {true} else {false};
+    let transmit = if matches.opt_present("t") {true} else {false};
 
 	// ---------------------------------------------------------
 	// Health status information
@@ -61,10 +105,10 @@ fn main() -> Result<(), Error> {
 	println!("Up time: {}", uptime.up);
 
 	// Get CPU usage 
-    	let cpu_use = system_info::cpu_usage(1).unwrap_or_else( |_| {
-                        println!("Failed to get CPU usage");
-                        0.0 } );
-    println!("CPU usage: {:.2}%", cpu_use );
+	let cpu_use_percent = system_info::cpu_usage(1).unwrap_or_else( |_| {
+                            println!("Failed to get CPU usage");
+                            0.0 } );
+    println!("CPU usage: {:.2}%", cpu_use_percent );
 
 	// Get memory usage 
 	// (we'll do it ourselves rather than query the KubOS monitor service)
@@ -75,11 +119,11 @@ fn main() -> Result<(), Error> {
 
 	// Get disk usage
     let disks = system_info::disk_usage_all().unwrap_or_else ( |_| {
-                    println!("Failed to get disk usage");
+                    warn!("Failed to get disk usage");
                     Vec::<system_info::Diskinfo>::new() } );
 
-    let boot = system_info::disk_usage_by_mount("/boot").unwrap_or_else( |_| {
-                    println!("Failed to get /boot disk usage info");
+    let root = system_info::find_mount(&disks, "/").unwrap_or_else( |_| {
+                    warn!("Failed to get /boot disk usage info");
                     system_info::Diskinfo{
                         filesystem:"".to_string(), 
                         total:0, 
@@ -88,10 +132,10 @@ fn main() -> Result<(), Error> {
                         use_percent:0.0, 
                         mounted_on:"".to_string()} } );
 
-    println!("/boot: {}", boot);
+    println!("/: {}", root);
 
-    let sda3 = system_info::disk_usage_by_filesystem("/dev/sda3").unwrap_or_else( |_| {
-                    println!("Failed to get /boot disk usage info");
+    let upgrade = system_info::find_filesystem(&disks, "/dev/sda3").unwrap_or_else( |_| {
+                    warn!("Failed to get /boot disk usage info");
                     system_info::Diskinfo{
                         filesystem:"".to_string(), 
                         total:0, 
@@ -100,7 +144,32 @@ fn main() -> Result<(), Error> {
                         use_percent:0.0, 
                         mounted_on:"".to_string()} } );
 
-    println!("/dev/sda3: {}", sda3);
+    println!("/dev/sda3: {}", upgrade);
+
+
+    let sd = system_info::find_filesystem(&disks, "/dev/sda1").unwrap_or_else( |_| {
+                    warn!("Failed to get /boot disk usage info");
+                    system_info::Diskinfo{
+                        filesystem:"".to_string(), 
+                        total:0, 
+                        used:0, 
+                        available:0, 
+                        use_percent:0.0, 
+                        mounted_on:"".to_string()} } );
+
+    println!("/dev/sda1: {}", sd);
+
+    let home = system_info::find_filesystem(&disks, "/dev/sda3").unwrap_or_else( |_| {
+                    warn!("Failed to get /boot disk usage info");
+                    system_info::Diskinfo{
+                        filesystem:"".to_string(), 
+                        total:0, 
+                        used:0, 
+                        available:0, 
+                        use_percent:0.0, 
+                        mounted_on:"".to_string()} } );
+
+    println!("/dev/sda3: {}", home);
 
     info!("Storing health status");
 
@@ -108,60 +177,23 @@ fn main() -> Result<(), Error> {
     let monitor_service = ServiceConfig::new("monitor-service")?;
     let telemetry_service = ServiceConfig::new("telemetry-service")?;
 
-    // Get the amount of memory currently available on the OBC
-    let request = "{memInfo{available}}";
-    let response = match query(&monitor_service, request, Some(Duration::from_secs(1))) {
-        Ok(msg) => msg,
-        Err(err) => {
-            error!("Monitor service query failed: {}", err);
-            bail!("Monitor service query failed: {}", err);
-        }
-    };
-
-    let memory = response.get("memInfo").and_then(|msg| msg.get("available"));
 
     // Save the amount to the telemetry database
-    if let Some(mem) = memory {
-        let request = format!(
-            r#"
-            mutation {{
-                insert(subsystem: "OBC", parameter: "available_mem", value: "{}") {{
-                    success,
-                    errors
-                }}
-            }}
-        "#,
-            mem
-        );
+    if save {
+        match ( save_parameter(&telemetry_service, "uptime", &uptime.up.to_string()),
+                save_parameter(&telemetry_service, "mem_usage", &meminfo.use_percent.to_string()),
+                save_parameter(&telemetry_service, "cpu_usage", &cpu_use_percent.to_string()),
+                save_parameter(&telemetry_service, "disk_root_usage", &root.use_percent.to_string()),
+                save_parameter(&telemetry_service, "disk_home_usage", &home.use_percent.to_string()),
+                save_parameter(&telemetry_service, "disk_sd_usage", &sd.use_percent.to_string()),
+                save_parameter(&telemetry_service, "disk_upgrade_usage", &upgrade.use_percent.to_string()) ) {
 
-        match query(&telemetry_service, &request, Some(Duration::from_secs(1))) {
-            Ok(msg) => {
-                let success = msg
-                    .get("insert")
-                    .and_then(|data| data.get("success").and_then(|val| val.as_bool()));
+            ( Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_) ) => Ok(()),
+     
+            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Failed to save telemetry"))?
 
-                if success == Some(true) {
-                    info!("Current memory value saved to database");
-                } else {
-                    match msg.get("errors") {
-                        Some(errors) => {
-                            error!("Failed to save value to database: {}", errors);
-                            bail!("Failed to save value to database: {}", errors);
-                        }
-                        None => {
-                            error!("Failed to save value to database");
-                            bail!("Failed to save value to database");
-                        }
-                    };
-                }
-            }
-            Err(err) => {
-                error!("Telemetry service mutation failed: {}", err);
-                bail!("Telemetry service mutation failed: {}", err);
-            }
         }
+    } else {
+        Ok(())
     }
-    
-
-    Ok(())
 }
