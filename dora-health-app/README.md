@@ -41,7 +41,7 @@ This app will primarily be run automatically using the KubOS scheduler service. 
 For testing or running the app outside of the scheduler service, send the app service the following:
 ```
 mutation { 
-  startApp(name: “dora-health-app", args: “—save”) { 
+  startApp(name: “dora-health-app", args: “--save”) { 
     success, 
     pid 
   } 
