@@ -21,7 +21,7 @@ After registering a mode, the next step is to associate a task list with the mod
 ```
 mutation { 
   importTaskList( 
-    name: "my-mission", 
+    name: "idle-mode", 
     path: "/home/vagrant/dora-experimental/tasks/dora-idle-mode.json", 
     mode: "idle"  ) 
     { 
@@ -30,7 +30,7 @@ mutation {
     } 
 } 
 ```
-The last step is to active the mode by sendind the scheduler service the following:
+The last step is to active the mode by sending the scheduler service the following:
 ```
 mutation { 
   activateMode(
