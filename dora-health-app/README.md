@@ -1,6 +1,6 @@
 # Health status and beacon
 
-This app is intended to be run regularly (e.g. every 30 seconds) during nominal operations.  It queries the operating system for basic system health information, including uptime, memory usage, processor load, and disk usage.  This information is acquired through queries to the /proc filesystem and execuation of "df".  Future updates will add additional health information.  
+This app is intended to be run regularly (e.g. every 30 seconds) during nominal operations.  It queries the operating system for basic system health information, including uptime, memory usage, processor load, and disk usage.  This information is acquired through queries to the /proc filesystem and execuation of "df".  Future updates will add additional health information.  The app is implemented in Rust using the KubOS app framework.
 
 ## Command line arguments
 
