@@ -1,0 +1,12 @@
+{
+  "tasks": [ 
+  { 
+    "description": "Transit health beacon", 
+    "delay": "30s", 
+    "period": "30s", 
+    "app": { 
+      "name": "dora-health-app",
+      "args": ["--transmit"]
+    } 
+  } ] 
+} 
