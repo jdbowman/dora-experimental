@@ -1,6 +1,6 @@
 # Task list descriptions for CONOPS modes
 
-This folder contains the JSON files that contain the task list descriptions for each of the operational modes for the spacecraft.  Operational modes are implemented in KubOS using the scheduler service.  More about using the scheduler can be found at: https://docs.kubos.com/1.21.0/tutorials/schedule-app.html.  Details of the task specifications are given at: More about task specification: https://docs.kubos.com/1.21.0/ecosystem/services/scheduler.html#schedule-specification.
+This folder contains the JSON files that contain the task list descriptions for each of the operational modes for the spacecraft.  Operational modes are implemented in KubOS using the scheduler service.  More about using the scheduler can be found at: https://docs.kubos.com/1.21.0/tutorials/schedule-app.html.  Details of the task specifications are given at: https://docs.kubos.com/1.21.0/ecosystem/services/scheduler.html#schedule-specification.
 
 ## Operational Modes
 
