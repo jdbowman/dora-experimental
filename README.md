@@ -10,7 +10,7 @@ The DORA cubesat is a 3U cubesat currently under development (2020) by Arizona S
 ## Apps in this repository
 
 * dora-health-app: A trial Rust app that gathers basic system health information and saves it to the KubOS telemetery database or transmits it through a KubOS communication layer
-* dora-track-app: A trial Python app that queriers the dora-sensor-service for angle of arrival information and adjusts uses a motor contoller connected by I2C to steer the sensors so that the angle of arrival is zero.
+* dora-track-app: A trial Python app that queries the dora-sensor-service for angle of arrival information and adjusts uses a motor contoller connected by I2C to steer the sensors so that the angle of arrival is zero.
 
 ## Services in this repository
 
