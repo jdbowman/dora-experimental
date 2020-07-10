@@ -1,0 +1,16 @@
+[package]
+name = "dora-radio-service"
+version = "0.1.0"
+authors = ["vagrant"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+comms-service = { git = "https://github.com/kubos/kubos" }
+failure = "0.1.2"
+juniper =  "0.11"
+kubos-service = { git = "https://github.com/kubos/kubos" }
+kubos-system = { git = "https://github.com/kubos/kubos" }
+log = "^0.4.0"
+serial = "0.4"

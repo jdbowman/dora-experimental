@@ -1,0 +1,7 @@
+[dora-radio-service.addr]
+ip = "0.0.0.0"
+port = 8150
+
+[dora-radio-service.comms]
+timeout = 1000
+ip = "0.0.0.0"

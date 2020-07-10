@@ -3,8 +3,10 @@ use failure::Error;
 use getopts::Options;
 use kubos_app::*;
 use log::*;
-use std::time::Duration;
 use std::io;
+use std::net::UdpSocket;
+use std::time::{Duration};
+use chrono::{Datelike, Timelike, Utc};
 mod system_info;
 
 
@@ -51,6 +53,18 @@ fn save_parameter(serv: &ServiceConfig, param: &str, val: &String) -> Result<(),
         }
     }
 }
+
+
+
+fn transmit_beacon(data: &str, service: &str) -> io::Result<usize> {
+
+    let socket = UdpSocket::bind("0.0.0.0:0").unwrap();
+    //let service = format!("127.0.0.1:{}", downlink_endpoint_udp);
+
+    println!("Transmit beacon through service: {}", service);
+    socket.send_to(data.as_bytes(), service)
+}
+
 
 
 
@@ -170,30 +184,81 @@ fn main() -> Result<(), Error> {
                         mounted_on:"".to_string()} } );
 
     println!("/dev/sda3: {}", home);
-
-    info!("Storing health status");
-
-    // Collect telemetry
-    let monitor_service = ServiceConfig::new("monitor-service")?;
-    let telemetry_service = ServiceConfig::new("telemetry-service")?;
-
+  
 
     // Save the amount to the telemetry database
     if save {
-        match ( save_parameter(&telemetry_service, "uptime", &uptime.up.to_string()),
-                save_parameter(&telemetry_service, "mem_usage", &meminfo.use_percent.to_string()),
-                save_parameter(&telemetry_service, "cpu_usage", &cpu_use_percent.to_string()),
-                save_parameter(&telemetry_service, "disk_root_usage", &root.use_percent.to_string()),
-                save_parameter(&telemetry_service, "disk_home_usage", &home.use_percent.to_string()),
-                save_parameter(&telemetry_service, "disk_sd_usage", &sd.use_percent.to_string()),
-                save_parameter(&telemetry_service, "disk_upgrade_usage", &upgrade.use_percent.to_string()) ) {
 
-            ( Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_) ) => Ok(()),
-     
-            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Failed to save telemetry"))?
+        info!("Storing health status");
 
+        match ServiceConfig::new("telemetry-service") {
+
+            Ok(t) => {
+        
+                match ( save_parameter(&t, "uptime", &uptime.up.to_string()),
+                        save_parameter(&t, "mem_usage", &meminfo.use_percent.to_string()),
+                        save_parameter(&t, "cpu_usage", &cpu_use_percent.to_string()),
+                        save_parameter(&t, "disk_root_usage", &root.use_percent.to_string()),
+                        save_parameter(&t, "disk_home_usage", &home.use_percent.to_string()),
+                        save_parameter(&t, "disk_sd_usage", &sd.use_percent.to_string()),
+                        save_parameter(&t, "disk_upgrade_usage", &upgrade.use_percent.to_string()) ) {
+
+                    ( Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_), Ok(_) ) => { },
+             
+                    _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Failed to save telemetry"))?
+
+                }
+            },
+
+            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Failed to find telemetry database service"))?
         }
-    } else {
-        Ok(())
     }
+
+    if transmit {
+
+        match ServiceConfig::("dora-radio-service") {
+
+            Ok(s) = > {
+
+                // Get the current time for the timestamp in the beacon
+                let now = Utc::now();
+
+                // Form the beacon data (will be wrapped in CCSDS space packet by the radio service)
+                let byte_string = format!("{},{:012.1},{:05.1},{:05.1},{:05.1},{:05.1},{:05.1},{:05.1}", 
+                    now.format("%Y-%m-%dT%H:%M:%S"),
+                    uptime.up,
+                    meminfo.use_percent,
+                    cpu_use_percent,
+                    root.use_percent,
+                    home.use_percent,
+                    sd.use_percent,
+                    upgrade.use_percent );
+
+                info!("Transmitting health beacon: {}", byte_string);
+
+                let raw = s.raw();
+                let ip = raw["addr"]["ip"].as_str().unwrap();
+                let port = 8161;
+                let service = format!("{}:{}", ip, port);
+
+                match transmit_beacon(&*byte_string, service) {
+
+                    Ok(len) => { 
+                        println!("Bytes transmitted: {}", len);
+                    },
+
+                    Err(err) => {
+                        error!("Failed to send health beacon to radio: {}", err);
+                        Err(io::Error::new(io::ErrorKind::NotConnected, 
+                            format!("Failed to send health beacon to radio: {}", err)))?
+                    }
+                }
+            },
+
+            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "Failed to find radio service"))?
+        }
+        
+    }
+
+    Ok(())
 }
